@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YATRA - Interactive India Travel Explorer</title>
+  <meta name="description" content="Single-page interactive India travel application featuring an India Gate hero poster, Leaflet cartography, and vintage destination poster views for iconic Indian cities." />
+  <meta property="og:title" content="YATRA - Interactive India Travel Explorer" />
+  <meta property="og:description" content="Single-page interactive India travel application featuring an India Gate hero poster, Leaflet cartography, and vintage destination poster views for iconic Indian cities." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <!-- Google Fonts: Rozha One, Cinzel, Montserrat, Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700;800;900&family=Rozha+One&display=swap" rel="stylesheet" />
+
+  <!-- FontAwesome Icons via CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- Leaflet.js Interactive Map CSS via CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            saffron: {
+              DEFAULT: '#f97316',
+              deep: '#ea580c',
+              light: '#fb923c',
+              glow: '#fdba74',
+            },
+            indiaNavy: {
+              DEFAULT: '#0f172a',
+              deep: '#030712',
+              chakra: '#000080',
+            },
+            kolkataYellow: '#facc15',
+            gold: '#f59e0b',
+            emeraldCity: '#059669',
+          },
+          fontFamily: {
+            rozha: ['"Rozha One"', 'serif'],
+            cinzel: ['Cinzel', 'serif'],
+            montserrat: ['Montserrat', 'sans-serif'],
+            inter: ['Inter', 'sans-serif'],
+          },
+          letterSpacing: {
+            poster: '0.3em',
+            giant: '0.4em',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Leaflet.js JavaScript via CDN -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <style>
+    /* Custom Styling for YATRA */
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #030712;
+      color: #f3f4f6;
+      overflow-x: hidden;
+    }
+
+    /* Ashoka Chakra Slow Rotation */
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin-slow {
+      animation: spin-slow 35s linear infinite;
+    }
+
+    /* Parallax & Fade Effects */
+    .hero-bg-parallax {
+      transform: translate3d(0, 0, 0);
+      will-change: transform, opacity;
+      transition: transform 0.1s ease-out;
+    }
+
+    /* Dark Leaflet Tile Filter */
+    .leaflet-container {
+      background: #090d16;
+      font-family: 'Inter', sans-serif;
+    }
+    .leaflet-tile {
+      filter: brightness(0.7) invert(1) contrast(3.4) hue-rotate(205deg) saturate(0.3);
+    }
+
+    /* Custom Pulsing Pin Marker */
+    .custom-map-pin {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .pin-pulse {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      animation: pin-ripple 2s infinite ease-out;
+      opacity: 0.8;
+      pointer-events: none;
+    }
+
+    @keyframes pin-ripple {
+      0% {
+        transform: scale(0.6);
+        opacity: 0.95;
+      }
+      100% {
+        transform: scale(2.3);
+        opacity: 0;
+      }
+    }
+
+    .pin-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 13px;
+      border-radius: 9999px;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      backdrop-filter: blur(10px);
+    }
+
+    .custom-map-pin:hover .pin-badge {
+      transform: translateY(-4px) scale(1.08);
+    }
+
+    /* Glassmorphism Classes */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .glass-pill {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    /* Delhi Architectural Arch Styling */
+    .delhi-arch-frame {
+      position: relative;
+      padding: 1.5rem 3rem;
+      border: 3px solid rgba(249, 115, 22, 0.85);
+      border-radius: 90px 90px 8px 8px;
+      box-shadow: 0 0 35px rgba(249, 115, 22, 0.3), inset 0 0 25px rgba(249, 115, 22, 0.15);
+      background: radial-gradient(ellipse at top, rgba(249, 115, 22, 0.15), transparent 70%);
+    }
+
+    .delhi-arch-frame::before {
+      content: '';
+      position: absolute;
+      inset: -8px;
+      border: 1px dashed rgba(249, 115, 22, 0.4);
+      border-radius: 98px 98px 12px 12px;
+      pointer-events: none;
+    }
+
+    /* Kolkata Massive Yellow Typography */
+    .kolkata-poster-text {
+      color: #facc15;
+      text-shadow: 4px 4px 0px #000, 8px 8px 0px rgba(0,0,0,0.85), 0 0 40px rgba(250, 204, 21, 0.4);
+      letter-spacing: 0.15em;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #030712;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4b5563;
+    }
+  </style>
+</head>
+<body class="bg-indiaNavy-deep text-slate-100 min-h-screen selection:bg-saffron selection:text-white">
+
+  <!-- ========================================== -->
+  <!-- GLOBAL NAVIGATION HEADER                   -->
+  <!-- ========================================== -->
+  <header id="global-header" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-indiaNavy-deep/80 backdrop-blur-md border-b border-white/10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      
+      <!-- Brand Logo -->
+      <a href="javascript:void(0)" onclick="navigateTo('home')" class="flex items-center gap-3 group focus:outline-none" aria-label="Yatra Home">
+        <!-- Stylized Ashoka Chakra Motif Miniature -->
+        <div class="w-10 h-10 rounded-full border border-saffron/40 flex items-center justify-center bg-saffron/10 group-hover:border-saffron transition-all">
+          <svg class="w-7 h-7 text-saffron animate-spin-slow" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="3"/>
+            <circle cx="50" cy="50" r="10" stroke="currentColor" stroke-width="3" fill="currentColor"/>
+            <!-- 24 Spokes -->
+            <g stroke="currentColor" stroke-width="1.8">
+              <line x1="50" y1="5" x2="50" y2="40"/><line x1="50" y1="60" x2="50" y2="95"/>
+              <line x1="5" y1="50" x2="40" y2="50"/><line x1="60" y1="50" x2="95" y2="50"/>
+              <line x1="18.18" y1="18.18" x2="42.93" y2="42.93"/><line x1="57.07" y1="57.07" x2="81.82" y2="81.82"/>
+              <line x1="18.18" y1="81.82" x2="42.93" y2="57.07"/><line x1="57.07" y1="42.93" x2="81.82" y2="18.18"/>
+              <line x1="9.69" y1="32.61" x2="40.35" y2="44.82"/><line x1="59.65" y1="55.18" x2="90.31" y2="67.39"/>
+              <line x1="32.61" y1="9.69" x2="44.82" y2="40.35"/><line x1="55.18" y1="59.65" x2="67.39" y2="90.31"/>
+              <line x1="67.39" y1="9.69" x2="55.18" y2="40.35"/><line x1="44.82" y1="59.65" x2="32.61" y2="90.31"/>
+              <line x1="90.31" y1="32.61" x2="59.65" y2="44.82"/><line x1="40.35" y1="55.18" x2="9.69" y2="67.39"/>
+              <line x1="5" y1="38.35" x2="40" y2="47"/><line x1="60" y1="53" x2="95" y2="61.65"/>
+              <line x1="38.35" y1="5" x2="47" y2="40"/><line x1="53" y1="60" x2="61.65" y2="95"/>
+              <line x1="61.65" y1="5" x2="53" y2="40"/><line x1="47" y1="60" x2="38.35" y2="95"/>
+              <line x1="95" y1="38.35" x2="60" y2="47"/><line x1="40" y1="53" x2="5" y2="61.65"/>
+            </g>
+          </svg>
+        </div>
+        <div class="flex flex-col">
+          <span class="font-cinzel text-2xl font-bold tracking-widest inline-flex items-center drop-shadow-sm select-none transition-all group-hover:brightness-110">
+            <span class="text-saffron">YA</span><span class="text-white">T</span><span class="text-[#16a34a]">RA</span>
+          </span>
+          <span class="text-[9px] tracking-widest uppercase text-slate-400 font-montserrat">Incredible India Portfolios</span>
+        </div>
+      </a>
+
+      <!-- Navigation Links -->
+      <nav class="hidden md:flex items-center gap-6 lg:gap-8 text-xs font-semibold tracking-widest uppercase text-slate-300 font-montserrat">
+        <button onclick="navigateTo('home')" class="hover:text-saffron transition-colors cursor-pointer py-1">Home</button>
+        <button onclick="navigateTo('map')" class="hover:text-saffron transition-colors cursor-pointer py-1">Interactive Map</button>
+
+        <!-- Cities & Places Dropdown -->
+        <div class="relative group" id="cities-dropdown-wrapper">
+          <button id="cities-dropdown-btn" onclick="toggleCitiesDropdown(event)" class="hover:text-saffron transition-colors cursor-pointer py-2 flex items-center gap-2 font-semibold">
+            <span>Cities & Places</span>
+            <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 group-hover:rotate-180" id="cities-dropdown-arrow"></i>
+          </button>
+          
+          <!-- Dropdown Menu -->
+          <div id="cities-dropdown-menu" class="absolute left-0 top-full pt-2 w-72 hidden group-hover:block transition-all duration-200 z-50">
+            <div class="glass-panel p-2 rounded-2xl border border-white/20 shadow-2xl backdrop-blur-xl bg-indiaNavy-deep/95 divide-y divide-white/10">
+              <div class="px-3 py-2 text-[10px] uppercase font-montserrat font-bold text-saffron tracking-widest flex items-center justify-between">
+                <span>Iconic Destinations</span>
+                <span class="text-[9px] text-slate-400 font-normal">5 Portfolios</span>
+              </div>
+              <div class="py-1 space-y-1">
+                <button onclick="openCityFromNav('delhi'); closeCitiesDropdown();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/10 transition-colors flex items-center gap-3 text-slate-200 hover:text-white group/item cursor-pointer">
+                  <span class="w-2.5 h-2.5 rounded-full bg-saffron shadow-sm"></span>
+                  <div class="flex flex-col">
+                    <span class="text-xs font-bold font-cinzel tracking-wider text-white group-hover/item:text-saffron transition-colors">Delhi</span>
+                    <span class="text-[10px] text-slate-400 font-inter lowercase first-letter:uppercase">Humayun's Tomb • Monuments</span>
+                  </div>
+                  <span class="ml-auto text-[10px] text-saffron-light font-serif">दिल्ली</span>
+                </button>
+
+                <button onclick="openCityFromNav('mumbai'); closeCitiesDropdown();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/10 transition-colors flex items-center gap-3 text-slate-200 hover:text-white group/item cursor-pointer">
+                  <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-sm"></span>
+                  <div class="flex flex-col">
+                    <span class="text-xs font-bold font-montserrat tracking-wider text-white group-hover/item:text-cyan-400 transition-colors">Mumbai</span>
+                    <span class="text-[10px] text-slate-400 font-inter lowercase first-letter:uppercase">Gateway of India • Marine Drive</span>
+                  </div>
+                  <span class="ml-auto text-[10px] text-cyan-300 font-serif">मुंबई</span>
+                </button>
+
+                <button onclick="openCityFromNav('hyderabad'); closeCitiesDropdown();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/10 transition-colors flex items-center gap-3 text-slate-200 hover:text-white group/item cursor-pointer">
+                  <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm"></span>
+                  <div class="flex flex-col">
+                    <span class="text-xs font-bold font-cinzel tracking-wider text-white group-hover/item:text-amber-400 transition-colors">Hyderabad</span>
+                    <span class="text-[10px] text-slate-400 font-inter lowercase first-letter:uppercase">Charminar • Nizami Heritage</span>
+                  </div>
+                  <span class="ml-auto text-[10px] text-amber-300 font-serif">హైదరాబాద్</span>
+                </button>
+
+                <button onclick="openCityFromNav('kolkata'); closeCitiesDropdown();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/10 transition-colors flex items-center gap-3 text-slate-200 hover:text-white group/item cursor-pointer">
+                  <span class="w-2.5 h-2.5 rounded-full bg-kolkataYellow shadow-sm"></span>
+                  <div class="flex flex-col">
+                    <span class="text-xs font-bold font-rozha tracking-wider text-white group-hover/item:text-kolkataYellow transition-colors">Kolkata</span>
+                    <span class="text-[10px] text-slate-400 font-inter lowercase first-letter:uppercase">Howrah Bridge • Yellow Taxis</span>
+                  </div>
+                  <span class="ml-auto text-[10px] text-yellow-300 font-serif">কলকাতা</span>
+                </button>
+
+                <button onclick="openCityFromNav('jaipur'); closeCitiesDropdown();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/10 transition-colors flex items-center gap-3 text-slate-200 hover:text-white group/item cursor-pointer">
+                  <span class="w-2.5 h-2.5 rounded-full bg-rose-400 shadow-sm"></span>
+                  <div class="flex flex-col">
+                    <span class="text-xs font-bold font-cinzel tracking-wider text-white group-hover/item:text-rose-400 transition-colors">Jaipur</span>
+                    <span class="text-[10px] text-slate-400 font-inter lowercase first-letter:uppercase">Hawa Mahal • Pink City Forts</span>
+                  </div>
+                  <span class="ml-auto text-[10px] text-rose-300 font-serif">जयपुर</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Explore Map Quick Action (Shifted right with dedicated margin & divider) -->
+      <div class="flex items-center gap-3 ml-auto md:ml-8 pl-4 border-l border-white/10">
+        <button onclick="navigateTo('map')" class="px-5 py-2.5 rounded-full border border-saffron/60 text-saffron hover:bg-saffron hover:text-white transition-all text-xs uppercase font-montserrat tracking-wider font-bold shadow-lg shadow-saffron/20 flex items-center gap-2 whitespace-nowrap cursor-pointer">
+          <i class="fa-solid fa-map-location-dot"></i>
+          <span>Explore Map</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- =============================================================== -->
+  <!-- SECTION 1: Home LANDING PAGE (INDIA GATE DESIGN)                -->
+  <!-- =============================================================== -->
+  <section id="home-section" class="relative h-screen min-h-[700px] w-full flex flex-col justify-between items-center text-center px-4 sm:px-6 lg:px-8 pt-28 pb-10 overflow-hidden select-none">
+    
+    <!-- Full-Screen Dramatic Background Image of India Gate -->
+    <div class="absolute inset-0 z-0">
+      <img id="home-bg-img" src="https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=2000&q=85" alt="India Gate New Delhi Monument" class="hero-bg-parallax w-full h-full object-cover object-center filter brightness-65 contrast-125 scale-105 transition-transform duration-700" />
+      
+      <!-- Saffron & Dark Editorial Poster Vignette Gradients -->
+      <div class="absolute inset-0 bg-gradient-to-t from-indiaNavy-deep via-indiaNavy-deep/40 to-indiaNavy-deep/80"></div>
+      <div class="absolute inset-0 bg-radial from-transparent via-black/40 to-black/80"></div>
+      <!-- Subtle saffron mist glow at center -->
+      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-saffron/15 rounded-full blur-[140px] pointer-events-none"></div>
+    </div>
+
+    <!-- Top Motif: Ashoka Chakra Emblem -->
+    <div id="home-chakra-container" class="relative z-10 flex flex-col items-center space-y-3 transition-all duration-500">
+      <div class="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center p-2 rounded-full border-2 border-saffron/50 shadow-2xl shadow-saffron/30 bg-black/40 backdrop-blur-md">
+        <!-- 24-Spoke Authentic Ashoka Chakra SVG -->
+        <svg class="w-full h-full text-saffron animate-spin-slow filter drop-shadow-[0_0_12px_rgba(249,115,22,0.6)]" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="3"/>
+          <circle cx="50" cy="50" r="10" stroke="currentColor" stroke-width="3" fill="#000080"/>
+          <!-- 24 spokes -->
+          <g stroke="currentColor" stroke-width="1.8">
+            <line x1="50" y1="4" x2="50" y2="40"/><line x1="50" y1="60" x2="50" y2="96"/>
+            <line x1="4" y1="50" x2="40" y2="50"/><line x1="60" y1="50" x2="96" y2="50"/>
+            <line x1="17.48" y1="17.48" x2="42.93" y2="42.93"/><line x1="57.07" y1="57.07" x2="82.52" y2="82.52"/>
+            <line x1="17.48" y1="82.52" x2="42.93" y2="57.07"/><line x1="57.07" y1="42.93" x2="82.52" y2="17.48"/>
+            <line x1="8.6" y1="32.05" x2="40.35" y2="44.82"/><line x1="59.65" y1="55.18" x2="91.4" y2="67.95"/>
+            <line x1="32.05" y1="8.6" x2="44.82" y2="40.35"/><line x1="55.18" y1="59.65" x2="67.95" y2="91.4"/>
+            <line x1="67.95" y1="8.6" x2="55.18" y2="40.35"/><line x1="44.82" y1="59.65" x2="32.05" y2="91.4"/>
+            <line x1="91.4" y1="32.05" x2="59.65" y2="44.82"/><line x1="40.35" y1="55.18" x2="8.6" y2="67.95"/>
+            <line x1="4.6" y1="41.05" x2="40" y2="47.5"/><line x1="60" y1="52.5" x2="95.4" y2="58.95"/>
+            <line x1="41.05" y1="4.6" x2="47.5" y2="40"/><line x1="52.5" y1="60" x2="58.95" y2="95.4"/>
+            <line x1="58.95" y1="4.6" x2="52.5" y2="40"/><line x1="47.5" y1="60" x2="41.05" y2="95.4"/>
+            <line x1="95.4" y1="41.05" x2="60" y2="47.5"/><line x1="40" y1="52.5" x2="4.6" y2="58.95"/>
+          </g>
+        </svg>
+      </div>
+      <div class="text-[11px] font-montserrat uppercase tracking-widest text-saffron-light font-bold">
+        सत्यमेव जयते • Republic of India
+      </div>
+    </div>
+
+    <!-- Center Poster Typography: GIANT "INDIA" -->
+    <div id="home-title-container" class="relative z-10 my-auto py-6">
+      <div class="inline-block glass-pill px-5 py-1.5 rounded-full text-xs font-montserrat tracking-widest uppercase text-white/80 border border-white/20 mb-4">
+        Editorial Heritage Archive
+      </div>
+      
+      <!-- Giant High-Contrast Overlay Typography -->
+      <h1 class="font-rozha text-7xl sm:text-9xl md:text-[11rem] lg:text-[13rem] font-bold text-red-600 leading-none tracking-tight drop-shadow-[0_15px_35px_rgba(0,0,0,0.9)] filter select-none">
+        INDIA
+      </h1>
+      
+      <p class="font-cinzel text-lg sm:text-2xl text-slate-200 tracking-widest uppercase font-semibold mt-2 drop-shadow-lg">
+        Land of Eternal Epics & Living Heritage
+      </p>
+    </div>
+
+    <!-- Bottom Subtitle & Scroll Down Indicator -->
+    <div id="home-bottom-container" class="relative z-10 max-w-2xl mx-auto space-y-6">
+      <!-- Required Subtitle -->
+      <p class="font-inter text-sm sm:text-base text-slate-300 font-light leading-relaxed drop-shadow-md">
+        "The India Gate is more than a landmark—it is a towering symbol of pride."
+      </p>
+
+      <!-- Animated Scroll Down Trigger -->
+      <div>
+        <button onclick="scrollToMap()" class="inline-flex flex-col items-center group cursor-pointer focus:outline-none" aria-label="Scroll down to explore map">
+          <span class="text-xs uppercase tracking-poster font-montserrat font-bold text-saffron group-hover:text-white transition-colors">
+            Scroll down to explore map
+          </span>
+          <div class="mt-2 w-10 h-10 rounded-full glass-pill flex items-center justify-center text-saffron group-hover:border-saffron group-hover:scale-110 transition-all shadow-lg shadow-saffron/20">
+            <i class="fa-solid fa-arrow-down animate-bounce text-sm"></i>
+          </div>
+        </button>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- SECTION 2: INTERACTIVE INDIA MAP CONTAINER                      -->
+  <!-- =============================================================== -->
+  <section id="map-section" class="relative min-h-screen w-full bg-indiaNavy-deep py-20 px-4 sm:px-6 lg:px-8 flex flex-col justify-center scroll-mt-16 transition-all duration-700">
+    
+    <div class="max-w-7xl mx-auto w-full space-y-6">
+      
+      <!-- Map Section Editorial Header -->
+      <div class="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 gap-4">
+        <div>
+          <div class="flex items-center gap-2 text-xs uppercase tracking-poster font-montserrat text-saffron font-bold">
+            <i class="fa-solid fa-compass"></i>
+            <span>Interactive Cartography</span>
+          </div>
+          <h2 class="font-cinzel text-3xl sm:text-5xl font-bold text-white mt-1">THE METROPOLITAN CORRIDOR</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-2 font-inter max-w-xl">
+            Centuries of dynastic rule, coastal maritime trade, and cultural revolutions etched across key coordinates of the Indian subcontinent.
+          </p>
+        </div>
+
+        <!-- City Quick Pick Pills -->
+        <div class="flex flex-wrap items-center gap-2 text-xs font-montserrat">
+          <span class="text-slate-400 uppercase tracking-wider text-[11px] mr-1">Direct Fly:</span>
+          <button onclick="flyToCityAndOpen('delhi')" class="glass-pill px-3 py-1.5 rounded-full text-slate-200 hover:text-saffron hover:border-saffron transition-all flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-saffron"></span> Delhi
+          </button>
+          <button onclick="flyToCityAndOpen('mumbai')" class="glass-pill px-3 py-1.5 rounded-full text-slate-200 hover:text-cyan-400 hover:border-cyan-400 transition-all flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span> Mumbai
+          </button>
+          <button onclick="flyToCityAndOpen('hyderabad')" class="glass-pill px-3 py-1.5 rounded-full text-slate-200 hover:text-amber-400 hover:border-amber-400 transition-all flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span> Hyderabad
+          </button>
+          <button onclick="flyToCityAndOpen('kolkata')" class="glass-pill px-3 py-1.5 rounded-full text-slate-200 hover:text-kolkataYellow hover:border-kolkataYellow transition-all flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-kolkataYellow"></span> Kolkata
+          </button>
+          <button onclick="flyToCityAndOpen('jaipur')" class="glass-pill px-3 py-1.5 rounded-full text-slate-200 hover:text-rose-400 hover:border-rose-400 transition-all flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-rose-400"></span> Jaipur
+          </button>
+        </div>
+      </div>
+
+      <!-- Map Frame with Glassmorphism Border -->
+      <div class="relative rounded-3xl overflow-hidden p-1 bg-gradient-to-b from-white/20 via-white/5 to-white/10 shadow-2xl">
+        
+        <!-- Live Leaflet Map Container -->
+        <div id="india-interactive-map" class="w-full h-[580px] sm:h-[680px] rounded-[22px] z-10"></div>
+
+        <!-- Floating Quick Legend & Instructions -->
+        <div class="absolute bottom-6 left-6 z-20 hidden sm:flex flex-col gap-2 glass-panel p-4 rounded-2xl max-w-xs border border-white/20 shadow-2xl">
+          <div class="text-[11px] uppercase tracking-widest font-montserrat font-bold text-saffron flex items-center gap-2">
+            <i class="fa-solid fa-crosshairs"></i>
+            <span>Interactive Waypoints</span>
+          </div>
+          <p class="text-xs text-slate-300 font-inter">
+            Click any pulsating city marker to initiate a smooth <code class="text-saffron">flyTo</code> camera zoom into that region and reveal its vintage poster portfolio.
+          </p>
+        </div>
+
+        <!-- Reset Zoom Button -->
+        <div class="absolute top-6 right-6 z-20">
+          <button onclick="resetIndiaMap()" class="glass-panel text-xs px-4 py-2.5 rounded-xl text-slate-200 hover:text-white hover:bg-white/20 transition-all flex items-center gap-2 shadow-2xl border border-white/20">
+            <i class="fa-solid fa-rotate-left text-saffron"></i>
+            <span class="font-montserrat uppercase tracking-wider font-semibold">Reset Whole India</span>
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- SECTION 3: DESTINATION POSTER PAGES (DYNAMIC VIEWS)             -->
+  <!-- =============================================================== -->
+  <section id="destination-view" class="hidden min-h-screen pb-24 transition-opacity duration-700 bg-indiaNavy-deep">
+    
+    <!-- Sticky Floating Navigation Button: "← Back to India Map" -->
+    <div class="fixed top-24 left-4 sm:left-8 z-40">
+      <button onclick="backToMap()" class="glass-panel hover:bg-slate-900/95 text-slate-200 hover:text-saffron px-5 py-3 rounded-full font-montserrat font-bold text-xs uppercase tracking-wider flex items-center gap-3 shadow-2xl transition-all border border-white/20 hover:scale-105 cursor-pointer">
+        <i class="fa-solid fa-arrow-left text-saffron text-sm"></i>
+        <span>← Back to India Map</span>
+      </button>
+    </div>
+
+    <!-- Immersive Full-Bleed Vintage Poster Hero Banner -->
+    <div id="city-hero-container" class="relative min-h-screen flex items-center justify-center overflow-hidden">
+      
+      <!-- Background Landmark Image -->
+      <img id="city-hero-img" src="" alt="Landmark" class="absolute inset-0 w-full h-full object-cover object-center transform scale-105 filter brightness-70 transition-all duration-700" />
+
+      <!-- Multi-tier Gradient Masks for Dramatic Editorial Legibility -->
+      <div class="absolute inset-0 bg-gradient-to-t from-indiaNavy-deep via-indiaNavy-deep/60 to-black/50"></div>
+      <div class="absolute inset-0 bg-radial from-transparent via-black/40 to-black/80"></div>
+
+      <!-- Poster Content Frame -->
+      <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-28 pb-16 space-y-6">
+        
+        <!-- Regional Script & Badge -->
+        <div class="flex items-center justify-center gap-3">
+          <span id="city-local-script" class="text-xl sm:text-2xl font-serif text-saffron drop-shadow-md">
+            హైదరాబాద్
+          </span>
+          <span class="text-white/40">•</span>
+          <span id="city-badge-tag" class="glass-pill px-4 py-1.5 rounded-full text-xs font-montserrat uppercase tracking-poster text-white font-semibold">
+            Iconic Destination
+          </span>
+        </div>
+
+        <!-- Dynamic City Header Container (Supports Delhi Arch, Kolkata Yellow, etc.) -->
+        <div id="city-title-wrapper" class="flex flex-col items-center justify-center my-4">
+          <!-- Dynamically filled with specific typography/arch -->
+        </div>
+
+        <!-- Tagline -->
+        <p id="city-tagline" class="font-montserrat text-lg sm:text-2xl font-light text-slate-200 tracking-wide max-w-3xl mx-auto drop-shadow-md">
+          Capital of Nizami Heritage & City of Pearls
+        </p>
+
+        <!-- Narrative Description -->
+        <p id="city-description" class="text-slate-300 text-sm sm:text-base max-w-2xl mx-auto font-inter leading-relaxed">
+          An evocative landscape where centuries of dynasties, artisan crafts, and rich culinary traditions blend seamlessly into vibrant modern life.
+        </p>
+
+        <!-- Quick Stats Matrix -->
+        <div class="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-3xl mx-auto">
+          <div class="glass-panel p-3.5 rounded-2xl text-center">
+            <div class="text-[10px] font-montserrat uppercase tracking-wider text-slate-400">Best Season</div>
+            <div id="city-stat-season" class="text-sm sm:text-base font-bold text-white mt-1 font-montserrat">Oct - Mar</div>
+          </div>
+          <div class="glass-panel p-3.5 rounded-2xl text-center">
+            <div class="text-[10px] font-montserrat uppercase tracking-wider text-slate-400">Ideal Stay</div>
+            <div id="city-stat-duration" class="text-sm sm:text-base font-bold text-white mt-1 font-montserrat">3 - 4 Days</div>
+          </div>
+          <div class="glass-panel p-3.5 rounded-2xl text-center">
+            <div class="text-[10px] font-montserrat uppercase tracking-wider text-slate-400">State / Region</div>
+            <div id="city-stat-state" class="text-sm sm:text-base font-bold text-saffron mt-1 font-montserrat">Telangana</div>
+          </div>
+          <div class="glass-panel p-3.5 rounded-2xl text-center">
+            <div class="text-[10px] font-montserrat uppercase tracking-wider text-slate-400">Atmosphere</div>
+            <div id="city-stat-vibe" class="text-sm sm:text-base font-bold text-white mt-1 font-montserrat">Nizami Royalty</div>
+          </div>
+        </div>
+
+        <!-- Scroll down indicator -->
+        <div class="pt-8">
+          <a href="#destination-sections" class="inline-flex flex-col items-center text-xs font-montserrat tracking-widest text-slate-400 hover:text-saffron transition-colors">
+            <span class="mb-2 uppercase">Explore Heritage Portfolio</span>
+            <i class="fa-solid fa-chevron-down animate-bounce text-saffron"></i>
+          </a>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Structured Content Modules -->
+    <div id="destination-sections" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-24 pt-20">
+
+      <!-- ======================================================= -->
+      <!-- MODULE 1: PLACES TO VISIT                               -->
+      <!-- ======================================================= -->
+      <section class="scroll-mt-28">
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 pb-4 border-b border-white/10 gap-4">
+          <div>
+            <span class="text-xs uppercase tracking-poster font-montserrat text-saffron font-bold">01 / ARCHITECTURAL MONUMENTS</span>
+            <h2 class="font-cinzel text-3xl sm:text-5xl font-bold text-white mt-1">Places to Visit</h2>
+          </div>
+          <p class="text-sm text-slate-400 max-w-md font-inter">
+            Defining landmarks that capture the architectural genius, royal patronage, and soul of the city.
+          </p>
+        </div>
+
+        <div id="city-places-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <!-- Rendered dynamically -->
+        </div>
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- MODULE 2: FOOD TO EAT                                   -->
+      <!-- ======================================================= -->
+      <section class="scroll-mt-28">
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 pb-4 border-b border-white/10 gap-4">
+          <div>
+            <span class="text-xs uppercase tracking-poster font-montserrat text-kolkataYellow font-bold">02 / LEGENDARY GASTRONOMY</span>
+            <h2 class="font-cinzel text-3xl sm:text-5xl font-bold text-white mt-1">Food to Eat</h2>
+          </div>
+          <p class="text-sm text-slate-400 max-w-md font-inter">
+            Celebrated culinary icons that have nourished poets, monarchs, and street connoisseurs for generations.
+          </p>
+        </div>
+
+        <div id="city-foods-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <!-- Rendered dynamically -->
+        </div>
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- MODULE 3: THINGS TO DO                                  -->
+      <!-- ======================================================= -->
+      <section class="scroll-mt-28">
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 pb-4 border-b border-white/10 gap-4">
+          <div>
+            <span class="text-xs uppercase tracking-poster font-montserrat text-cyan-400 font-bold">03 / SIGNATURE EXPERIENCES</span>
+            <h2 class="font-cinzel text-3xl sm:text-5xl font-bold text-white mt-1">Things to Do</h2>
+          </div>
+          <p class="text-sm text-slate-400 max-w-md font-inter">
+            Immersive rituals and vibrant encounters that bring you face-to-face with authentic local life.
+          </p>
+        </div>
+
+        <div id="city-experiences-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Rendered dynamically -->
+        </div>
+      </section>
+
+      <!-- Cross-City Exploration Bar -->
+      <section class="pt-16 pb-6 border-t border-white/10 text-center">
+        <span class="text-xs uppercase tracking-poster font-montserrat text-slate-400">Continue Your Expedition</span>
+        <h3 class="font-cinzel text-2xl sm:text-3xl font-bold text-white mt-1 mb-8">Hop to Another City</h3>
+        <div id="other-cities-container" class="flex flex-wrap items-center justify-center gap-4">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+    </div>
+
+  </section>
+
+  <!-- ========================================== -->
+  <!-- FOOTER                                     -->
+  <!-- ========================================== -->
+  <footer class="bg-black border-t border-white/10 py-12 px-4 sm:px-6 lg:px-8 text-center text-slate-400 text-xs font-inter">
+    <div class="max-w-7xl mx-auto space-y-4">
+      <div class="flex items-center justify-center gap-2">
+        <span class="font-cinzel text-xl font-bold tracking-widest inline-flex items-center drop-shadow-sm select-none">
+          <span class="text-saffron">YA</span><span class="text-white">T</span><span class="text-[#16a34a]">RA</span>
+        </span>
+      </div>
+      <p class="text-slate-500 max-w-md mx-auto">
+        Celebrating the architectural grandeur, culinary traditions, and timeless soul of Incredible India.
+      </p>
+      <div class="text-[11px] text-slate-600 tracking-wider pt-2">
+        &copy; 2026 YATRA Travel Archive. Crafted with Leaflet.js, OpenStreetMap & Tailwind CSS.
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================================== -->
+  <!-- JAVASCRIPT APPLICATION LOGIC               -->
+  <!-- ========================================== -->
+  <script>
+    /**
+     * =========================================================================
+     * 1. CITIES DATA REPOSITORY
+     * =========================================================================
+     * Structured data for Hyderabad, Mumbai, Delhi, Kolkata, and Jaipur.
+     */
+    const citiesData = {
+      hyderabad: {
+        id: 'hyderabad',
+        name: 'HYDERABAD',
+        localScript: 'హైదరాబాద్',
+        state: 'Telangana',
+        tagline: 'Capital of Nizami Heritage & City of Pearls',
+        heroLandmark: 'Charminar, Old City',
+        heroImage: 'https://images.unsplash.com/photo-1576487248805-cf45f6bcc67f?auto=format&fit=crop&w=1920&q=85',
+        accentColor: '#f59e0b', // Amber
+        coordinates: [17.3850, 78.4867],
+        stats: {
+          season: 'Oct - Mar',
+          duration: '3 - 4 Days',
+          state: 'Telangana',
+          vibe: 'Nizami Royalty'
+        },
+        description: 'An evocative city where 16th-century Qutb Shahi architecture meets fragrant wood-fired biryani pots, glittering pearl bazaars, and grand Asaf Jahi palaces.',
+        placesToVisit: [
+          {
+            name: 'Charminar',
+            image: 'https://images.unsplash.com/photo-1576487248805-cf45f6bcc67f?auto=format&fit=crop&w=800&q=80',
+            location: 'Old City Gateway',
+            tag: 'Monumental Icon',
+            description: 'The monumental 1591 CE four-minaret archway that has stood at the crossroads of commerce and devotion for over four centuries.'
+          },
+          {
+            name: 'Golconda Fort',
+            image: 'https://images.unsplash.com/photo-1616091216791-a5360b5fc78a?auto=format&fit=crop&w=800&q=80',
+            location: 'Ibrahim Bagh',
+            tag: 'Diamond Vaults',
+            description: 'A fortified medieval citadel famed for its acoustic clapping galleries and subterranean vaults that once held the Koh-i-Noor diamond.'
+          },
+          {
+            name: 'Hussain Sagar Buddha Statue',
+            image: 'https://images.unsplash.com/photo-1605649487212-47bdab064df8?auto=format&fit=crop&w=800&q=80',
+            location: 'Hussain Sagar Lake',
+            tag: 'Monolithic Marvel',
+            description: 'The world’s tallest monolithic granite statue of Gautama Buddha, standing serene on Gibraltar Rock in the center of the lake.'
+          },
+          {
+            name: 'Chowmahalla Palace',
+            image: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=800&q=80',
+            location: 'Motigall',
+            tag: 'Seat of the Nizams',
+            description: 'The opulent ceremonial palace complex of the Nizams, renowned for its Khilwat Mubarak hall, Belgian chandeliers, and vintage car fleet.'
+          }
+        ],
+        foodToEat: [
+          {
+            name: 'Hyderabadi Dum Biryani',
+            image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=800&q=80',
+            spice: 'Hot / Aromatic',
+            spots: 'Paradise, Bawarchi, Shadab',
+            description: 'Marinated meat and aged basmati rice cooked on slow coal embers (dum) inside a dough-sealed copper degh with saffron and brown onions.'
+          },
+          {
+            name: 'Irani Chai & Osmania Biscuits',
+            image: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=800&q=80',
+            spice: 'Sweet / Milky',
+            spots: 'Nimrah Café & Bakery',
+            description: 'Thick, creamy milk tea poured steaming hot, paired with sweet and savory crumbly Osmania biscuits crafted under the Nizam’s patron.'
+          },
+          {
+            name: 'Haleem',
+            image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=800&q=80',
+            spice: 'Rich / Savory',
+            spots: 'Pista House, Café 555',
+            description: 'A slow-braised paste of shredded meat, broken wheat, lentils, and pure ghee pounded for 12 hours and garnished with fried cashews.'
+          },
+          {
+            name: 'Double Ka Meetha',
+            image: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=800&q=80',
+            spice: 'Rich / Sweet',
+            spots: 'Hotel Madina, Shah Ghouse',
+            description: 'A royal Hyderabadi dessert of fried milk bread soaked in cardamom saffron syrup and thickened clotted cream (rabdi).'
+          }
+        ],
+        thingsToDo: [
+          {
+            title: 'Shopping at Laad Bazaar',
+            icon: 'fa-gem',
+            tag: 'Old City Charm',
+            description: 'Walk through glittering lanes surrounding Charminar to bargain for traditional lacquer bangles, Basra pearls, and antique zari work.'
+          },
+          {
+            title: 'Evening Lake Cruise on Hussain Sagar',
+            icon: 'fa-ship',
+            tag: 'Twilight Magic',
+            description: 'Board a twilight catamaran out to the illuminated monolithic Buddha statue as cool evening breezes drift across the water.'
+          },
+          {
+            title: 'Heritage Old City Walk',
+            icon: 'fa-person-walking-arrow-right',
+            tag: 'Historical Expedition',
+            description: 'Navigate ancient alleyways, hidden royal deodis, perfumed attar shops, and centuries-old calligraphers with a local storyteller.'
+          }
+        ]
+      },
+
+      mumbai: {
+        id: 'mumbai',
+        name: 'MUMBAI',
+        localScript: 'मुंबई',
+        state: 'Maharashtra',
+        tagline: 'The City of Dreams',
+        heroLandmark: 'Gateway of India & CSMT Station',
+        heroImage: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=1920&q=85',
+        accentColor: '#06b6d4', // Cyan
+        coordinates: [19.0760, 72.8777],
+        stats: {
+          season: 'Nov - Feb',
+          duration: '3 - 4 Days',
+          state: 'Maharashtra',
+          vibe: 'Cosmopolitan Energy'
+        },
+        description: 'India’s bustling commercial powerhouse and cinematic capital, perched along the Arabian Sea where Victorian Gothic architecture meets the unstoppable momentum of dreams.',
+        placesToVisit: [
+          {
+            name: 'Gateway of India',
+            image: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=800&q=80',
+            location: 'Apollo Bunder Waterfront',
+            tag: 'Maritime Archway',
+            description: 'An imposing basalt triumphal arch facing Mumbai Harbour, erected to commemorate the 1911 royal visit of King George V.'
+          },
+          {
+            name: 'Marine Drive (Queen’s Necklace)',
+            image: 'https://images.unsplash.com/photo-1567157577867-05ccb1388e66?auto=format&fit=crop&w=800&q=80',
+            location: 'South Mumbai Promenade',
+            tag: 'Sunset Boulevard',
+            description: 'A sweeping 3.6-kilometer C-shaped coastal boulevard whose glowing evening streetlights resemble a glittering string of pearls.'
+          },
+          {
+            name: 'Elephanta Caves',
+            image: 'https://images.unsplash.com/photo-1598977123418-454555af95d1?auto=format&fit=crop&w=800&q=80',
+            location: 'Elephanta Island Harbour',
+            tag: 'UNESCO World Heritage',
+            description: 'Rock-cut temple cave sculptures carved between the 5th and 7th centuries, headlined by the colossal three-faced Sadashiva relief.'
+          },
+          {
+            name: 'CSMT Railway Terminus',
+            image: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=800&q=80',
+            location: 'Fort Historic District',
+            tag: 'Victorian Gothic Marvel',
+            description: 'A breathtaking UNESCO-listed railway terminus combining Italianate High Victorian Gothic design with traditional Mughal decorative motifs.'
+          }
+        ],
+        foodToEat: [
+          {
+            name: 'Vada Pav',
+            image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=80',
+            spice: 'Fiery / Garlic',
+            spots: 'Aram Milk Bar, Ashok Vada Pav',
+            description: 'A spicy spiced potato fritter nestled inside a soft pav bun with roasted garlic chutney, green chili chutney, and fried green chilies.'
+          },
+          {
+            name: 'Pav Bhaji',
+            image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=800&q=80',
+            spice: 'Buttery / Tangy',
+            spots: 'Sardar Refreshments, Cannon Pav Bhaji',
+            description: 'Mashed spiced mixed vegetables cooked on a giant flat griddle with generous slabs of Amul butter, eaten with pan-toasted buttered buns.'
+          },
+          {
+            name: 'Bombay Grilled Sandwich',
+            image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=800&q=80',
+            spice: 'Herbal / Tangy',
+            spots: 'Lucky Sandwich, Churchgate',
+            description: 'Layered bread packed with sliced boiled potatoes, beetroot, cucumber, onions, spicy mint chutney, and molten melted cheese toasted over coals.'
+          },
+          {
+            name: 'Misal Pav',
+            image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=800&q=80',
+            spice: 'Extremely Fiery',
+            spots: 'Aaswad, Prakash Shakahari',
+            description: 'A zesty sprouted moth bean curry topped with crunchy farsan, raw onions, and coriander, served with an extra bowl of fiery red rassa broth.'
+          }
+        ],
+        thingsToDo: [
+          {
+            title: 'Sunset Walk Along Marine Drive',
+            icon: 'fa-water',
+            tag: 'Coastal Bliss',
+            description: 'Sit on the tetrapods as the fiery sun dips below the Arabian Sea horizon, listening to crashing waves and laughter of strollers.'
+          },
+          {
+            title: 'Local Train Experience (Churchgate to Bandra)',
+            icon: 'fa-train-subway',
+            tag: 'Lifeline of Mumbai',
+            description: 'Catch an off-peak local suburban train ride with the wind rushing through open doors to experience the true heartbeat of the city.'
+          },
+          {
+            title: 'Colaba Causeway Shopping & Café Leopold',
+            icon: 'fa-bag-shopping',
+            tag: 'Heritage Street Culture',
+            description: 'Haggle for brass antiques and leather boots along Colaba pavement stalls before settling into historical Café Leopold for cold beer and stories.'
+          }
+        ]
+      },
+
+      delhi: {
+        id: 'delhi',
+        name: 'DELHI',
+        localScript: 'दिल्ली',
+        state: 'National Capital Territory',
+        tagline: 'The City of Monuments',
+        heroLandmark: 'Humayun’s Tomb & India Gate',
+        heroImage: 'https://images.unsplash.com/photo-1592635196078-9fdc757f27f4?auto=format&fit=crop&w=1920&q=85',
+        accentColor: '#f97316', // Saffron
+        coordinates: [28.6139, 77.2090],
+        stats: {
+          season: 'Oct - Mar',
+          duration: '3 - 5 Days',
+          state: 'Delhi NCR',
+          vibe: 'Dildaar Dilli'
+        },
+        description: 'The political heart and ancient throne of seven historical cities, where imposing red sandstone battlements coexist with leafy colonial avenues and bustling Mughal bazaars.',
+        placesToVisit: [
+          {
+            name: 'Qutub Minar',
+            image: 'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80',
+            location: 'Mehrauli',
+            tag: 'Victory Tower',
+            description: 'A 73-meter fluted red sandstone minaret founded in 1192 CE by Qutb-ud-din Aibak, surrounded by intricate ancient Hindu and Islamic carvings.'
+          },
+          {
+            name: 'Red Fort (Lal Qila)',
+            image: 'https://images.unsplash.com/photo-1592635196078-9fdc757f27f4?auto=format&fit=crop&w=800&q=80',
+            location: 'Old Delhi',
+            tag: 'Mughal Imperial Seat',
+            description: 'The monumental fortress palace of Emperor Shah Jahan, featuring the Diwan-i-Aam, Diwan-i-Khas, and iconic Lahori Gate ramparts.'
+          },
+          {
+            name: 'Humayun’s Tomb',
+            image: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=800&q=80',
+            location: 'Nizamuddin East',
+            tag: 'Charbagh Masterpiece',
+            description: 'The sublime red-sandstone and white-marble mausoleum that served as the architectural inspiration for the Taj Mahal.'
+          },
+          {
+            name: 'Lotus Temple',
+            image: 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=800&q=80',
+            location: 'Kalkaji',
+            tag: 'Baháʼí House of Worship',
+            description: 'A stunning modern architectural wonder sculpted like a blooming lotus flower out of pristine Greek white marble, welcoming all faiths in silence.'
+          }
+        ],
+        foodToEat: [
+          {
+            name: 'Chole Bhature at Chandni Chowk',
+            image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=800&q=80',
+            spice: 'Spicy / Tangy',
+            spots: 'Sita Ram Diwan Chand, Haldiram’s',
+            description: 'Giant puffed balloon breads served with dark, tangily spiced chickpeas infused with dried anardana (pomegranate) and pickled amla.'
+          },
+          {
+            name: 'Butter Chicken (Murgh Makhani)',
+            image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=800&q=80',
+            spice: 'Mild / Creamy',
+            spots: 'Moti Mahal Daryaganj, Gulati',
+            description: 'Tandoor-charred chicken simmered in a velvet puree of ripe tomatoes, butter, cashew cream, and fragrant dried fenugreek leaves (kasoori methi).'
+          },
+          {
+            name: 'Paranthas at Gali Paranthe Wali',
+            image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=80',
+            spice: 'Rich / Crispy',
+            spots: 'Babu Ram Paranthe Wale',
+            description: 'Deep-fried flatbreads stuffed with spiced potatoes, radish, cottage cheese, or crushed papad, served with sweet pumpkin curry and chutneys.'
+          },
+          {
+            name: 'Nihari & Rabri Kulfi',
+            image: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=800&q=80',
+            spice: 'Aromatic & Sweet',
+            spots: 'Karim’s & Kuremal Mohan Lal',
+            description: 'An overnight slow-cooked stew seasoned with long peppers and bone marrow, rounded off with chilled condensed-milk kulfi falooda.'
+          }
+        ],
+        thingsToDo: [
+          {
+            title: 'Cycle-Rickshaw Ride in Old Delhi',
+            icon: 'fa-bicycle',
+            tag: 'Mughal Alleys',
+            description: 'Navigate narrow medieval passages of Kinari Bazaar and Khari Baoli Asia’s largest spice market, enveloped by aromas of cardamom and clove.'
+          },
+          {
+            title: 'Souvenir Shopping at Dilli Haat',
+            icon: 'fa-store',
+            tag: 'Pan-Indian Crafts',
+            description: 'Stroll open-air thatched craft stalls featuring rotating master artisans from all 28 states, paired with state-stall regional delicacies.'
+          },
+          {
+            title: 'Late Evening Street Food Walk in Matia Mahal',
+            icon: 'fa-utensils',
+            tag: 'Gourmet Safari',
+            description: 'Follow the illuminated aroma trails across Jama Masjid gate for seekh kebabs, butter-tossed chicken, and warm Shahi Tukda.'
+          }
+        ]
+      },
+
+      kolkata: {
+        id: 'kolkata',
+        name: 'KOLKATA',
+        localScript: 'কলকাতা',
+        state: 'West Bengal',
+        tagline: 'The Tale of Yellow Taxis & City of Joy',
+        heroLandmark: 'Howrah Bridge & Yellow Ambassador Taxis',
+        heroImage: 'https://images.unsplash.com/photo-1558431382-27e303142255?auto=format&fit=crop&w=1920&q=85',
+        accentColor: '#facc15', // Kolkata Yellow
+        coordinates: [22.5726, 88.3639],
+        stats: {
+          season: 'Oct - Mar',
+          duration: '3 - 4 Days',
+          state: 'West Bengal',
+          vibe: 'Literary & Soulful'
+        },
+        description: 'The cultural and intellectual heart of India, where iconic yellow Ambassador taxis cross the cantilevered Howrah Bridge beneath colonial colonnades and poetic tea addas.',
+        placesToVisit: [
+          {
+            name: 'Howrah Bridge (Rabindra Setu)',
+            image: 'https://images.unsplash.com/photo-1558431382-27e303142255?auto=format&fit=crop&w=800&q=80',
+            location: 'Hooghly Riverfront',
+            tag: 'Cantilever Marvel',
+            description: 'The monumental balanced cantilever steel bridge built without nuts or bolts, connecting Kolkata with Howrah station over river ferries.'
+          },
+          {
+            name: 'Victoria Memorial',
+            image: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=800&q=80',
+            location: 'The Maidan',
+            tag: 'Makrana Marble Palace',
+            description: 'A majestic white Makrana marble palace commemorating Queen Victoria, set inside 64 acres of manicured gardens and reflecting ponds.'
+          },
+          {
+            name: 'Dakshineswar Kali Temple',
+            image: 'https://images.unsplash.com/photo-1627894483216-2138af692e32?auto=format&fit=crop&w=800&q=80',
+            location: 'Hooghly Banks',
+            tag: 'Spiritual Sanctum',
+            description: 'The celebrated nine-spire Hindu temple dedicated to Goddess Bhavatarini, famously sanctified by mystic saint Ramakrishna Paramahamsa.'
+          },
+          {
+            name: 'Park Street',
+            image: 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=800&q=80',
+            location: 'Central Kolkata',
+            tag: 'The High Street of Joy',
+            description: 'The historic thoroughfare renowned for legendary colonial pubs, jazz-era restaurants, Oxford Bookstores, and Christmas carnivals.'
+          }
+        ],
+        foodToEat: [
+          {
+            name: 'Kolkata Kathi Roll',
+            image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=800&q=80',
+            spice: 'Tangy / Smoky',
+            spots: 'Nizam’s (Inventor), Kusum Rolls',
+            description: 'Skewered kebabs fried with an egg inside a flaky paratha flatbread, rolled with sliced onions, lime juice, and green chilies.'
+          },
+          {
+            name: 'Roshogolla',
+            image: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=800&q=80',
+            spice: 'Sweet / Spongy',
+            spots: 'Nobin Chandra Das, KC Das',
+            description: 'Soft, spongy dumplings of chhena (curd cheese) cooked in light boiling sugar syrup, invented in Kolkata by Nobin Chandra Das in 1868.'
+          },
+          {
+            name: 'Mishti Doi',
+            image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=800&q=80',
+            spice: 'Caramelized / Sweet',
+            spots: 'Balaram Mullick, Mithai',
+            description: 'Fermented sweet yogurt made with caramelized jaggery (nolen gur) or brown sugar, set and chilled inside earthen clay bowls (bhar).'
+          },
+          {
+            name: 'Kolkata Bhetki Fish Fry',
+            image: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=800&q=80',
+            spice: 'Crispy / Mustard',
+            spots: 'Mitra Café, Bijoli Grill',
+            description: 'Tender Calcutta Bhetki fish fillets marinated in green herb paste, crumb-coated with biscuit powder, and served with pungent Kasundi mustard.'
+          }
+        ],
+        thingsToDo: [
+          {
+            title: 'Heritage Tram Ride Through Old Kolkata',
+            icon: 'fa-train-tram',
+            tag: 'Vintage Transit',
+            description: 'Ride Asia’s oldest operating electric tramcar leisurely between College Street bookstalls and the lush expanses of the Maidan.'
+          },
+          {
+            title: 'Sunset Boating at Prinsep Ghat',
+            icon: 'fa-sailboat',
+            tag: 'Hooghly Serenade',
+            description: 'Hire a hand-rowed wooden dinghy boat on the Hooghly as the sunset turns the silhouetted Vidyasagar Setu bridge into molten gold.'
+          },
+          {
+            title: 'Durga Puja Pandal Hopping & Adda',
+            icon: 'fa-drum',
+            tag: 'Cultural Spectacle',
+            description: 'Immerse yourself in UNESCO-recognized autumn celebrations featuring architectural pandals, dhak drummers, and passionate tea addas.'
+          }
+        ]
+      },
+
+      jaipur: {
+        id: 'jaipur',
+        name: 'JAIPUR',
+        localScript: 'जयपुर',
+        state: 'Rajasthan',
+        tagline: 'Royal Heritage in the Pink City',
+        heroLandmark: 'Hawa Mahal & Amber Fort',
+        heroImage: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=1920&q=85',
+        accentColor: '#f43f5e', // Rose Pink
+        coordinates: [26.9124, 75.7873],
+        stats: {
+          season: 'Oct - Mar',
+          duration: '3 - 4 Days',
+          state: 'Rajasthan',
+          vibe: 'Rajput Splendor'
+        },
+        description: 'The terracotta-pink capital of Rajasthan, engineered to Vastu Shastra principles and guarded by hilltop forts that once echoed with cavalry horns and royal courts.',
+        placesToVisit: [
+          {
+            name: 'Hawa Mahal (Palace of Winds)',
+            image: 'https://images.unsplash.com/photo-1609137144822-26323c21a48c?auto=format&fit=crop&w=800&q=80',
+            location: 'Badi Choupad',
+            tag: 'Honeycomb Façade',
+            description: 'A five-story pink sandstone pyramid pierced by 953 jharokha latticed windows designed for royal ladies to view street life unseen.'
+          },
+          {
+            name: 'Amber Fort & Sheesh Mahal',
+            image: 'https://images.unsplash.com/photo-1585139162985-745463e42bef?auto=format&fit=crop&w=800&q=80',
+            location: 'Amer Hills',
+            tag: 'Hilltop Stronghold',
+            description: 'A fortress over Maota Lake with mirror-inlaid halls (Sheesh Mahal) where a single candle flame is reflected across thousands of mirrors.'
+          },
+          {
+            name: 'City Palace Complex',
+            image: 'https://images.unsplash.com/photo-1590766940554-634a7ed41450?auto=format&fit=crop&w=800&q=80',
+            location: 'Jaleb Chowk',
+            tag: 'Royal Residence',
+            description: 'A living royal residence blending Rajput and Mughal design, featuring royal costume galleries and the famed Peacock Gate.'
+          },
+          {
+            name: 'Jal Mahal (Water Palace)',
+            image: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=800&q=80',
+            location: 'Man Sagar Lake',
+            tag: 'Submerged Wonder',
+            description: 'A serene red sandstone summer palace set in the center of Man Sagar Lake, with four underwater floors beneath calm waters.'
+          }
+        ],
+        foodToEat: [
+          {
+            name: 'Dal Baati Churma',
+            image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=80',
+            spice: 'Rich / Ghee',
+            spots: 'Laxmi Mishthan Bhandar (LMB)',
+            description: 'Baked wheat flour balls dipped in pure desi ghee, served with spicy five-lentil dal and sweet cardamom wheat churma.'
+          },
+          {
+            name: 'Pyaaz Kachori',
+            image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=800&q=80',
+            spice: 'Crispy / Spicy',
+            spots: 'Rawat Mishthan Bhandar',
+            description: 'A flaky, deep-fried pastry shell packed with spiced steamed onions and nigella seeds, famous nationwide as the ultimate breakfast snack.'
+          },
+          {
+            name: 'Ghevar',
+            image: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=800&q=80',
+            spice: 'Sweet Honeycomb',
+            spots: 'Kanha, Sambhar Fini',
+            description: 'A disc-shaped Rajasthani honeycomb sweet prepared during monsoon and festivals, drenched in saffron syrup and capped with rabdi.'
+          },
+          {
+            name: 'Laal Maas',
+            image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=800&q=80',
+            spice: 'Extremely Fiery',
+            spots: 'Handi, 1135 AD Amber',
+            description: 'A warrior curry slow-braised with pungent Mathania red chilies, garlic, and mustard oil over glowing charcoal embers.'
+          }
+        ],
+        thingsToDo: [
+          {
+            title: 'Hot Air Balloon Ride Over Ancient Forts',
+            icon: 'fa-parachute-box',
+            tag: 'Aerial Splendor',
+            description: 'Drift high above rugged Aravalli hill ranges, sand dunes, and Amber Fort at sunrise for a panoramic view of Rajputana.'
+          },
+          {
+            title: 'Elephant Sanctuary Interaction & Painting',
+            icon: 'fa-shield-heart',
+            tag: 'Ethical Encounters',
+            description: 'Feed, walk, and paint rescue elephants with herbal natural colors at designated sanctuary conservation farms near Amer.'
+          },
+          {
+            title: 'Shopping at Johari & Bapu Bazaar',
+            icon: 'fa-gem',
+            tag: 'Gemstone Capital',
+            description: 'Explore terracotta-pink arcades for authentic Kundan jewelry, handcrafted blue pottery, camel leather juttis, and block-print textiles.'
+          }
+        ]
+      }
+    };
+
+    /**
+     * =========================================================================
+     * 2. LEAFLET MAP STATE & INITIALIZATION
+     * =========================================================================
+     */
+    let indiaLeafletMap = null;
+    const INDIA_CENTER_COORDINATES = [22.5937, 78.9629];
+    const DEFAULT_ZOOM = 5;
+
+    function initLeafletMap() {
+      const mapContainer = document.getElementById('india-interactive-map');
+      if (!mapContainer || indiaLeafletMap) return;
+
+      // Leaflet map centered on India [22.5937, 78.9629] at zoom level 5
+      indiaLeafletMap = L.map('india-interactive-map', {
+        center: INDIA_CENTER_COORDINATES,
+        zoom: DEFAULT_ZOOM,
+        minZoom: 4,
+        maxZoom: 13,
+        zoomControl: true,
+        scrollWheelZoom: false,
+      });
+
+      // OpenStreetMap Tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+      }).addTo(indiaLeafletMap);
+
+      // Create Custom Pins for Key Cities: Delhi, Mumbai, Hyderabad, Kolkata, Jaipur
+      Object.values(citiesData).forEach((city) => {
+        const pinHtml = `
+          <div class="custom-map-pin" title="Fly to ${city.name}">
+            <div class="pin-pulse" style="background-color: ${city.accentColor};"></div>
+            <div class="pin-badge" style="background-color: rgba(3, 7, 18, 0.92); border: 1.5px solid ${city.accentColor}; color: #ffffff;">
+              <i class="fa-solid fa-location-dot" style="color: ${city.accentColor};"></i>
+              <span>${city.name}</span>
+            </div>
+          </div>
+        `;
+
+        const customIcon = L.divIcon({
+          className: 'custom-leaflet-marker',
+          html: pinHtml,
+          iconSize: [120, 50],
+          iconAnchor: [60, 25],
+        });
+
+        const marker = L.marker(city.coordinates, { icon: customIcon }).addTo(indiaLeafletMap);
+
+        // Marker Click Listener: Triggers flyTo and opens Destination View upon arrival
+        marker.on('click', () => {
+          flyToCityAndOpen(city.id);
+        });
+      });
+    }
+
+    /**
+     * Resets the map back to showing the entire country
+     */
+    function resetIndiaMap() {
+      if (!indiaLeafletMap) return;
+      indiaLeafletMap.flyTo(INDIA_CENTER_COORDINATES, DEFAULT_ZOOM, {
+        duration: 1.3,
+        easeLinearity: 0.25
+      });
+    }
+
+    /**
+     * Smoothly flies the map camera to the selected city coordinate
+     * and automatically opens Section 3 upon arrival.
+     * @param {string} cityId
+     */
+    function flyToCityAndOpen(cityId) {
+      const city = citiesData[cityId];
+      if (!city) return;
+
+      // Ensure user is viewing map section first
+      const mapSection = document.getElementById('map-section');
+      mapSection.scrollIntoView({ behavior: 'smooth' });
+
+      if (indiaLeafletMap) {
+        // Trigger smooth flyTo animation
+        indiaLeafletMap.flyTo(city.coordinates, 8, {
+          duration: 1.2,
+          easeLinearity: 0.3
+        });
+
+        // Upon arrival, automatically open Section 3 (Destination Detail View)
+        setTimeout(() => {
+          renderCityPosterPage(cityId);
+        }, 1100);
+      } else {
+        renderCityPosterPage(cityId);
+      }
+    }
+
+    /**
+     * =========================================================================
+     * 3. SECTION 3: DESTINATION POSTER PAGE RENDERER
+     * =========================================================================
+     */
+    function renderCityPosterPage(cityId) {
+      const city = citiesData[cityId];
+      if (!city) return;
+
+      // Window scroll to top
+      window.scrollTo({ top: 0, behavior: 'instant' });
+
+      // View Transitions: Hide Home/Hero & Map, Show Destination View
+      const homeSection = document.getElementById('home-section') || document.getElementById('hero-section');
+      if (homeSection) homeSection.classList.add('hidden');
+      const mapSection = document.getElementById('map-section');
+      if (mapSection) mapSection.classList.add('hidden');
+      
+      const destinationView = document.getElementById('destination-view');
+      if (destinationView) destinationView.classList.remove('hidden');
+
+      // Populate Hero Landmark Imagery
+      const heroImg = document.getElementById('city-hero-img');
+      heroImg.src = city.heroImage;
+      heroImg.alt = `${city.name} - ${city.heroLandmark}`;
+
+      // Local Script & Badges
+      document.getElementById('city-local-script').innerText = city.localScript;
+      document.getElementById('city-badge-tag').innerText = `${city.state} • Landmark Archive`;
+      document.getElementById('city-tagline').innerText = `"${city.tagline}"`;
+      document.getElementById('city-description').innerText = city.description;
+
+      // Stats
+      document.getElementById('city-stat-season').innerText = city.stats.season;
+      document.getElementById('city-stat-duration').innerText = city.stats.duration;
+      document.getElementById('city-stat-state').innerText = city.stats.state;
+      document.getElementById('city-stat-vibe').innerText = city.stats.vibe;
+
+      // Specific City Title Typographic Styling
+      const titleWrapper = document.getElementById('city-title-wrapper');
+      titleWrapper.innerHTML = '';
+
+      if (cityId === 'delhi') {
+        // Architectural Arch Mockup + "Dildaar Dilli"
+        titleWrapper.innerHTML = `
+          <div class="delhi-arch-frame my-2 flex flex-col items-center">
+            <span class="text-[11px] font-montserrat uppercase tracking-poster text-saffron font-bold mb-1">Dildaar Dilli</span>
+            <h1 class="font-rozha text-6xl sm:text-8xl md:text-9xl font-bold text-white uppercase tracking-wider drop-shadow-2xl">
+              ${city.name}
+            </h1>
+            <span class="text-xs font-serif text-saffron-light mt-1">राजधानी दिल्ली</span>
+          </div>
+        `;
+      } else if (cityId === 'kolkata') {
+        // Massive Yellow Block Typography
+        titleWrapper.innerHTML = `
+          <div class="my-2 text-center">
+            <span class="text-xs font-montserrat uppercase tracking-poster text-kolkataYellow font-bold">The City of Joy</span>
+            <h1 class="kolkata-poster-text font-montserrat text-6xl sm:text-8xl md:text-[10rem] font-black uppercase leading-none drop-shadow-2xl">
+              ${city.name}
+            </h1>
+          </div>
+        `;
+      } else if (cityId === 'hyderabad') {
+        // Tall Serif Font + Local Script
+        titleWrapper.innerHTML = `
+          <div class="my-2 text-center">
+            <span class="text-xs font-montserrat uppercase tracking-poster text-amber-400 font-bold">Capital of Nizams</span>
+            <h1 class="font-cinzel text-6xl sm:text-8xl md:text-9xl font-black text-white uppercase tracking-wider drop-shadow-2xl">
+              ${city.name}
+            </h1>
+          </div>
+        `;
+      } else if (cityId === 'mumbai') {
+        // Bold Display Font
+        titleWrapper.innerHTML = `
+          <div class="my-2 text-center">
+            <span class="text-xs font-montserrat uppercase tracking-poster text-cyan-400 font-bold">Financial & Cultural Metropolis</span>
+            <h1 class="font-montserrat text-6xl sm:text-8xl md:text-[10rem] font-black text-white uppercase tracking-widest leading-none drop-shadow-2xl">
+              ${city.name}
+            </h1>
+          </div>
+        `;
+      } else {
+        // Jaipur & others
+        titleWrapper.innerHTML = `
+          <div class="my-2 text-center">
+            <span class="text-xs font-montserrat uppercase tracking-poster text-rose-400 font-bold">The Pink City of Kings</span>
+            <h1 class="font-rozha text-6xl sm:text-8xl md:text-9xl font-bold text-white uppercase tracking-wider drop-shadow-2xl">
+              ${city.name}
+            </h1>
+          </div>
+        `;
+      }
+
+      // Render Module 1: Places to Visit (4 rich cards)
+      const placesGrid = document.getElementById('city-places-grid');
+      placesGrid.innerHTML = '';
+      city.placesToVisit.forEach((place) => {
+        const card = document.createElement('div');
+        card.className = 'glass-panel rounded-2xl overflow-hidden group hover:-translate-y-2 hover:border-saffron/50 transition-all duration-300 shadow-2xl flex flex-col';
+        card.innerHTML = `
+          <div class="relative h-56 overflow-hidden">
+            <img src="${place.image}" alt="${place.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" loading="lazy" />
+            <div class="absolute inset-0 bg-gradient-to-t from-indiaNavy-deep via-black/30 to-transparent"></div>
+            <div class="absolute top-3 right-3 glass-pill px-3 py-1 rounded-full text-[10px] font-montserrat uppercase tracking-wider text-saffron-light">
+              ${place.tag}
+            </div>
+            <div class="absolute bottom-3 left-3 flex items-center gap-1.5 text-xs text-slate-300 font-montserrat">
+              <i class="fa-solid fa-location-dot text-saffron"></i>
+              <span>${place.location}</span>
+            </div>
+          </div>
+          <div class="p-5 flex-1 flex flex-col justify-between">
+            <div>
+              <h4 class="font-cinzel text-lg font-bold text-white group-hover:text-saffron transition-colors">${place.name}</h4>
+              <p class="text-xs text-slate-300 mt-2 font-inter leading-relaxed">${place.description}</p>
+            </div>
+          </div>
+        `;
+        placesGrid.appendChild(card);
+      });
+
+      // Render Module 2: Food to Eat (4 rich cards)
+      const foodsGrid = document.getElementById('city-foods-grid');
+      foodsGrid.innerHTML = '';
+      city.foodToEat.forEach((food) => {
+        const card = document.createElement('div');
+        card.className = 'glass-panel rounded-2xl overflow-hidden group hover:-translate-y-2 hover:border-kolkataYellow/50 transition-all duration-300 shadow-2xl flex flex-col';
+        card.innerHTML = `
+          <div class="relative h-48 overflow-hidden">
+            <img src="${food.image}" alt="${food.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" loading="lazy" />
+            <div class="absolute inset-0 bg-gradient-to-t from-indiaNavy-deep via-black/40 to-transparent"></div>
+            <div class="absolute top-3 left-3 glass-pill px-3 py-1 rounded-full text-[10px] font-montserrat uppercase tracking-wider text-kolkataYellow flex items-center gap-1">
+              <i class="fa-solid fa-fire text-saffron"></i>
+              <span>${food.spice}</span>
+            </div>
+          </div>
+          <div class="p-5 flex-1 flex flex-col justify-between">
+            <div>
+              <h4 class="font-cinzel text-lg font-bold text-white group-hover:text-kolkataYellow transition-colors">${food.name}</h4>
+              <p class="text-xs text-slate-300 mt-2 font-inter leading-relaxed">${food.description}</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-white/10 flex items-center gap-2 text-[11px] text-slate-300 font-montserrat">
+              <i class="fa-solid fa-utensils text-saffron"></i>
+              <span class="truncate">${food.spots}</span>
+            </div>
+          </div>
+        `;
+        foodsGrid.appendChild(card);
+      });
+
+      // Render Module 3: Things to Do (3 numbered checklist cards)
+      const experiencesGrid = document.getElementById('city-experiences-grid');
+      experiencesGrid.innerHTML = '';
+      city.thingsToDo.forEach((exp, idx) => {
+        const card = document.createElement('div');
+        card.className = 'glass-panel p-6 rounded-2xl border border-white/15 hover:border-cyan-400/50 transition-all duration-300 shadow-2xl flex flex-col justify-between group';
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="font-rozha text-3xl font-black text-slate-600 group-hover:text-cyan-400 transition-colors">0${idx + 1}</span>
+              <div class="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-cyan-400 text-lg group-hover:scale-110 transition-transform">
+                <i class="fa-solid ${exp.icon}"></i>
+              </div>
+            </div>
+            <div class="text-[10px] font-montserrat uppercase tracking-wider text-cyan-400 mb-1 font-semibold">${exp.tag}</div>
+            <h4 class="font-cinzel text-lg font-bold text-white mb-2 leading-snug">${exp.title}</h4>
+            <p class="text-xs text-slate-300 font-inter leading-relaxed">${exp.description}</p>
+          </div>
+          <div class="mt-6 flex items-center gap-2 text-[11px] text-slate-400 font-montserrat uppercase tracking-wider">
+            <i class="fa-solid fa-circle-check text-emeraldCity"></i>
+            <span>Signature Activity</span>
+          </div>
+        `;
+        experiencesGrid.appendChild(card);
+      });
+
+      // Populate Other Cities Quick Navigation Bar
+      const otherCitiesContainer = document.getElementById('other-cities-container');
+      otherCitiesContainer.innerHTML = '';
+      Object.values(citiesData).forEach((other) => {
+        if (other.id === city.id) return;
+        const btn = document.createElement('button');
+        btn.className = 'glass-pill px-5 py-2.5 rounded-full text-xs font-montserrat font-bold uppercase tracking-wider text-slate-200 hover:text-saffron hover:border-saffron/60 transition-all flex items-center gap-2 cursor-pointer';
+        btn.onclick = () => renderCityPosterPage(other.id);
+        btn.innerHTML = `
+          <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${other.accentColor};"></span>
+          <span>${other.name}</span>
+          <i class="fa-solid fa-arrow-right text-[10px] text-slate-400"></i>
+        `;
+        otherCitiesContainer.appendChild(btn);
+      });
+    }
+
+    /**
+     * =========================================================================
+     * 4. NAVIGATION & SCROLL MECHANICS
+     * =========================================================================
+     */
+
+    /**
+     * Resets the view from Destination View back to the India Map section
+     * and zooms out to show the whole country again.
+     */
+    function backToMap() {
+      // Reveal Home/Hero and Map sections again
+      const homeSection = document.getElementById('home-section') || document.getElementById('hero-section');
+      if (homeSection) homeSection.classList.remove('hidden');
+      const mapSection = document.getElementById('map-section');
+      if (mapSection) mapSection.classList.remove('hidden');
+      
+      // Hide destination view
+      const destinationView = document.getElementById('destination-view');
+      if (destinationView) destinationView.classList.add('hidden');
+
+      // Scroll smoothly to the map section
+      const mapTarget = document.getElementById('map-section');
+      if (mapTarget) mapTarget.scrollIntoView({ behavior: 'smooth' });
+
+      // Invalidate Leaflet size & reset zoom
+      if (indiaLeafletMap) {
+        setTimeout(() => {
+          indiaLeafletMap.invalidateSize();
+          resetIndiaMap();
+        }, 200);
+      }
+    }
+
+    /**
+     * Smoothly scrolls from Hero down to Map Section
+     */
+    function scrollToMap() {
+      const mapSection = document.getElementById('map-section');
+      if (mapSection) mapSection.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    /**
+     * Global Header Navigation Router
+     * @param {'hero'|'home'|'map'} target
+     */
+    function navigateTo(target) {
+      // Ensure Home/Hero and Map sections are visible
+      const homeSection = document.getElementById('home-section') || document.getElementById('hero-section');
+      if (homeSection) homeSection.classList.remove('hidden');
+      const mapSection = document.getElementById('map-section');
+      if (mapSection) mapSection.classList.remove('hidden');
+      const destinationView = document.getElementById('destination-view');
+      if (destinationView) destinationView.classList.add('hidden');
+
+      if (target === 'hero' || target === 'home') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (target === 'map') {
+        scrollToMap();
+      }
+
+      if (indiaLeafletMap) {
+        setTimeout(() => {
+          indiaLeafletMap.invalidateSize();
+        }, 150);
+      }
+    }
+
+    /**
+     * Nav bar direct city trigger
+     * @param {string} cityId
+     */
+    function openCityFromNav(cityId) {
+      renderCityPosterPage(cityId);
+      closeCitiesDropdown();
+    }
+
+    /**
+     * Toggles Cities & Places Dropdown on click/tap
+     */
+    function toggleCitiesDropdown(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('cities-dropdown-menu');
+      const arrow = document.getElementById('cities-dropdown-arrow');
+      if (menu) {
+        menu.classList.toggle('hidden');
+        if (arrow) {
+          arrow.classList.toggle('rotate-180');
+        }
+      }
+    }
+
+    /**
+     * Closes Cities & Places Dropdown
+     */
+    function closeCitiesDropdown() {
+      const menu = document.getElementById('cities-dropdown-menu');
+      const arrow = document.getElementById('cities-dropdown-arrow');
+      if (menu) menu.classList.add('hidden');
+      if (arrow) arrow.classList.remove('rotate-180');
+    }
+
+    // Close dropdown on click outside
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('cities-dropdown-wrapper');
+      if (dropdown && !dropdown.contains(e.target)) {
+        closeCitiesDropdown();
+      }
+    });
+
+    /**
+     * Setup CSS Parallax on Hero section when scrolling down
+     */
+    function initParallaxScrollEffect() {
+      const heroBg = document.getElementById('home-bg-img') || document.getElementById('hero-bg-img');
+      const heroTitle = document.getElementById('home-title-container') || document.getElementById('hero-title-container');
+      const heroChakra = document.getElementById('home-chakra-container') || document.getElementById('hero-chakra-container');
+      const heroBottom = document.getElementById('home-bottom-container') || document.getElementById('hero-bottom-container');
+
+      window.addEventListener('scroll', () => {
+        const scrollY = window.scrollY;
+        const heroHeight = window.innerHeight;
+
+        if (scrollY < heroHeight) {
+          const ratio = scrollY / heroHeight;
+
+          // Parallax movement on background image
+          if (heroBg) {
+            heroBg.style.transform = `translate3d(0, ${scrollY * 0.35}px, 0) scale(${1.05 + ratio * 0.1})`;
+          }
+
+          // Smooth fade and slide out for hero typography
+          if (heroTitle) {
+            heroTitle.style.opacity = `${Math.max(0, 1 - ratio * 1.5)}`;
+            heroTitle.style.transform = `translate3d(0, ${-scrollY * 0.25}px, 0)`;
+          }
+
+          if (heroChakra) {
+            heroChakra.style.opacity = `${Math.max(0, 1 - ratio * 1.8)}`;
+          }
+
+          if (heroBottom) {
+            heroBottom.style.opacity = `${Math.max(0, 1 - ratio * 1.6)}`;
+          }
+        }
+      });
+    }
+
+    /**
+     * =========================================================================
+     * 5. APPLICATION INITIALIZATION
+     * =========================================================================
+     */
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Initialize Leaflet Map
+      initLeafletMap();
+
+      // 2. Setup CSS Parallax Scroll Mechanics
+      initParallaxScrollEffect();
+
+      // Window resize listener
+      window.addEventListener('resize', () => {
+        if (indiaLeafletMap) {
+          indiaLeafletMap.invalidateSize();
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>

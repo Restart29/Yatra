@@ -1,0 +1,6 @@
+{
+  "name": "YATRA - Interactive India Travel Explorer",
+  "description": "Single-page interactive India travel application featuring an India Gate hero poster, Leaflet cartography, and vintage destination poster views for iconic Indian cities.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
